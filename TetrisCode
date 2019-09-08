@@ -1,0 +1,335 @@
+vim: syntax=C
+#include <stdio.h>
+#include <stdlib.h>
+#include <windows.h>
+#define UP      72
+#define DOWN    80
+#define LEFT    75
+#define RIGHT   77
+int dx, dy;               //cursor movement
+static int lineclearcount = 0;
+int board[22][12] = {{0}};
+int pieceboard;
+int tetrisblock[28][4][4]=
+{
+    { {0,0,0,0},
+      {1,1,1,1},
+      {0,0,0,0},
+      {0,0,0,0},
+    },//0 i_shape
+    { {0,0,1,0},
+      {0,0,1,0},
+      {0,0,1,0},
+      {0,0,1,0},
+    },//1
+    { {0,0,0,0},
+      {0,0,0,0},
+      {1,1,1,1},
+      {0,0,0,0},
+    },//2
+    { {0,1,0,0},
+      {0,1,0,0},
+      {0,1,0,0},
+      {0,1,0,0},
+    },//3
+    { {1,0,0,0},
+      {1,1,1,0},
+      {0,0,0,0},
+      {0,0,0,0},
+    },//4 J_shape
+    { {0,1,1,0},
+      {0,1,0,0},
+      {0,1,0,0},
+      {0,0,0,0},
+    },//5
+    { {0,0,0,0},
+      {1,1,1,0},
+      {0,0,1,0},
+      {0,0,0,0},
+    },//6
+    { {0,1,0,0},
+      {0,1,0,0},
+      {1,1,0,0},
+      {0,0,0,0},
+    },//7
+    { {0,0,1,0},
+      {1,1,1,0},
+      {0,0,0,0},
+      {0,0,0,0},
+    },//8 L_shape
+    { {0,1,0,0},
+      {0,1,0,0},
+      {0,1,1,0},
+      {0,0,0,0},
+    },//9
+    { {0,0,0,0},
+      {1,1,1,0},
+      {1,0,0,0},
+      {0,0,0,0},
+    },//10
+    { {1,1,0,0},
+      {0,1,0,0},
+      {0,1,0,0},
+      {0,0,0,0},
+    },//11
+    { {0,1,1,0},
+      {0,1,1,0},
+      {0,0,0,0},
+      {0,0,0,0},
+    },//12 O_shape
+    { {0,1,1,0},
+      {0,1,1,0},
+      {0,0,0,0},
+      {0,0,0,0},
+    },//13
+    { {0,1,1,0},
+      {0,1,1,0},
+      {0,0,0,0},
+      {0,0,0,0},
+    },//14
+    { {0,1,1,0},
+      {0,1,1,0},
+      {0,0,0,0},
+      {0,0,0,0},
+    },//15
+    { {0,1,1,0},
+      {1,1,0,0},
+      {0,0,0,0},
+      {0,0,0,0},
+    },//16 S_shape
+    { {0,1,0,0},
+      {0,1,1,0},
+      {0,0,1,0},
+      {0,0,0,0},
+    },//17
+    { {0,0,0,0},
+      {0,1,1,0},
+      {1,1,0,0},
+      {0,0,0,0},
+    },//18
+    { {1,0,0,0},
+      {1,1,0,0},
+      {0,1,0,0},
+      {0,0,0,0},
+    },//19
+    { {0,1,0,0},
+      {1,1,1,0},
+      {0,0,0,0},
+      {0,0,0,0},
+    },//20 T_shape
+    { {0,1,0,0},
+      {0,1,1,0},
+      {0,1,0,0},
+      {0,0,0,0},
+    },//21
+    { {0,0,0,0},
+      {1,1,1,0},
+      {0,1,0,0},
+      {0,0,0,0},
+    },//22
+    { {0,1,0,0},
+      {1,1,0,0},
+      {0,1,0,0},
+      {0,0,0,0},
+    },//23
+    { {1,1,0,0},
+      {0,1,1,0},
+      {0,0,0,0},
+      {0,0,0,0},
+    },//24 z_shape
+    { {0,0,1,0},
+      {0,1,1,0},
+      {0,1,0,0},
+      {0,0,0,0},
+    },//25
+    { {0,0,0,0},
+      {1,1,0,0},
+      {0,1,1,0},
+      {0,0,0,0},
+    },//26
+    { {0,1,0,0},
+      {1,1,0,0},
+      {1,0,0,0},
+      {0,0,0,0},
+    },//27
+};
+
+void gotoxy(int x, int y){
+   COORD Pos = {x, y};
+   SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), Pos);
+}
+
+void stadium(){
+    int x = 12, y = 17;
+    gotoxy(0,0);
+    printf("┌"); //218
+    for(x=0; x<20; x+=2){
+        printf("─"); //196
+    }
+    printf("┐"); //191
+    for(y=1; y<21; y++){
+        gotoxy(22, y);
+        printf("│"); //179
+    }
+    gotoxy(22, y);
+    printf("┘"); //217
+    for(; x>0; x-=2){
+        gotoxy(x,y);
+        printf("─"); //196
+    }
+    gotoxy(x, y);
+    printf("└"); //192
+    for(; y>1; y--){
+        gotoxy(x, y-1);
+        printf("│"); //179
+    }
+}
+
+void initialboard(){
+    int x=0, y=0;
+    for(x=0; x<12; x++){
+        board[0][x] = 1;
+        board[21][x] = 1;
+    }
+    for (y=0; y<22; y++){
+        board[y][0] = 1;
+        board[y][11] = 1;
+    }
+}
+
+void displayboard(){
+    int x=0, y=0;
+    for(y=0; y<22; y++){
+        for(x=0; x<12; x++){
+            gotoxy(2*x,y);
+            printf("%2d", board[y][x]);
+        }
+    }
+}
+
+void printboard(){
+    int x, y;
+    for(y=20; y>0; y--){
+        for(x=1; x<11; x++){
+            gotoxy(x*2, y);
+            if (board[y][x] == 1) printf("¡á");
+            else printf("  ");
+        }
+    }
+}
+
+int check_drop(int x, int y, int blocknum){
+    int a=0, b=0;
+    for(b=0; b<4; b++){
+        for(a=0; a<4; a++){
+            if (board[y+b][x+a] == 1 && tetrisblock[blocknum][b][a] == 1) return 0;
+        }
+    }
+    return 1;
+}
+
+void check_lineclear(){
+    int blockcount = 0, x = 1, y = 20;
+    for(y=20; y>0; y--){
+        for(x=1, blockcount=0; x<11; x++){
+            if (board[y][x] == 1) blockcount++;
+        }
+        if (blockcount == 0) break;
+        if (blockcount == 10){
+            for(x=1; x<11; x++){
+                board[y][x]=0;
+            }
+            int temp_y = y;
+            for(blockcount = 0; temp_y > 0; temp_y--){
+                for(x=1; x<11; x++){
+                    board[temp_y][x] = board [temp_y-1][x];
+                    if (board[temp_y-1][x] == 1) blockcount++;
+                }
+                if (blockcount == 0) break;
+            }
+            lineclearcount++;
+        }
+    }
+    printboard();
+}
+
+int print_piece(int x, int y, int blocknum, int sleepvalue){
+    int a=0, b=0;
+    if (check_drop(x,y, blocknum) == 1){
+        for(b=0; b<4; b++){
+            for(a=0;a<4;a++){
+                if (board[y+b-1][x+a] == 0){
+                    gotoxy(x*2+2*a, y+b-1);
+                    printf("  ");
+                }
+            }
+        }
+        for(b=0; b<4; b++){
+            for(a=0; a<4; a++){
+                gotoxy(x*2+2*a,y+b);
+                if (tetrisblock[blocknum][b][a] == 1) printf("■"); //254
+            }
+        }
+        Sleep(sleepvalue);
+        return 1;
+    }
+    else{
+        for(b=0; b<4; b++){
+            for(a=0; a<4; a++){
+                if (tetrisblock[blocknum][b][a] == 1) board[y+b-1][x+a] = 1;
+            }
+        }
+        printboard();
+        check_lineclear();
+        return 0;
+    }
+}
+
+int drop_piece(int blocknum){
+    int x=4, y=1, rotation = 1, sleepvalue = 100;
+    char key;
+    for(;y<21;y++){
+        key = getche();
+        if (key==133) key = getche();
+        switch(key){
+            case UP:
+                blocknum++; rotation++;
+                if (rotation >= 4){
+                    rotation = 1;
+                    blocknum = blocknum - 3;
+                }
+                break;
+            case LEFT:
+                x--;
+                break;
+            case RIGHT:
+                x++;
+                break;
+            case DOWN:
+                sleepvalue = 100;
+                break;
+        }
+        if (print_piece(x,y,blocknum, sleepvalue) == 0) break;
+    }
+    return y;
+}
+
+void startgame(){
+    int blocknum = 0, y_height = 21;
+    srand(time(NULL));
+    while(y_height > 1){
+        blocknum = rand()%7 * 4;
+        y_height = drop_piece(blocknum);
+        printf("blocknum = %d, y_height = %d", blocknum, y_height);
+        //if KBDHIT
+    }
+    gotoxy(0,23);
+}
+
+int main(){
+    stadium();
+    initialboard();
+    //displayboard();
+    startgame();
+    return 0;
+}
