@@ -1,7 +1,7 @@
 # Tetris in C
 
 ## About
-This is a tetris game designed in C!
+My very first game project... tetris game designed in C language!
 
 ## How To Play
 Play!
